@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ GRIDFLUX
+# GRIDFLUX
 **A Tetris-like typing game for modern ergonomic keyboards**
 
 [![HTML5](https://img.shields.io/badge/HTML5-Strict-E34F26?style=for-the-badge&logo=html5&logoColor=white)](#)
