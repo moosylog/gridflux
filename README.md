@@ -12,10 +12,10 @@
 
 <br>
 
-<a href="#" target="_blank">
+<a href="https://moosylog.github.io/gridflux/" target="_blank">
   <img 
-    src="https://moosylog.github.io/gridflux/🚀%20LAUNCH%20GRIDFLUX-CLICK%20TO%20START-00FF66?style=for-the-badge"
-    alt="Launch GridFlux"
+    src="https://img.shields.io/badge/🚀%20LAUNCH%20CORTEX-CLICK%20TO%20START-00FF66?style=for-the-badge"
+    alt="Launch GRIDFLUX"
   />
 </a>
 
