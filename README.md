@@ -14,7 +14,7 @@
 
 <a href="#" target="_blank">
   <img 
-    src="https://img.shields.io/badge/🚀%20LAUNCH%20GRIDFLUX-CLICK%20TO%20START-00FF66?style=for-the-badge"
+    src="https://moosylog.github.io/gridflux/🚀%20LAUNCH%20GRIDFLUX-CLICK%20TO%20START-00FF66?style=for-the-badge"
     alt="Launch GridFlux"
   />
 </a>
