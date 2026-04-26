@@ -925,7 +925,8 @@
                         }
                         score += Math.round((n.j?300:100)*skillIndex); combo++;
                         
-                    } else if(!n.g) {
+   //                 } else if(!n.g) {  moosy fix for smooth ocean
+					} else if(!n.g && !n.isDecoy) {
                         playDrop(); 
                         health -= n.isWord ? 3 : 1; 
                         
