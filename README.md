@@ -28,13 +28,10 @@
 
 ## 📊 The Ergonomic Transition Trap
 
-Switching to an advanced ergonomic keyboard initially destroys your muscle memory. Standard typing websites fail to help you transition because they only show you *what* to type, not *how* to physically reach it. 
+Switching to an advanced ergonomic keyboard (like a Glove80 or Corne) initially destroys your muscle memory. Standard typing websites fail to help you transition because they only show you *what* to type, not *how* to physically reach it. 
 
 - **The Visual Crutch:** You keep looking down at your hands to find the keys, breaking your flow state and capping your speed.
-- **The Pinky Strain:** Traditional 19th-century touch-typing rules force you to stretch your weakest finger (the pinky) to the farthest outer keys, causing rapid fatigue and strain.
-
-> **🔬 Source & Validation:** Traditional touch-typing was standardized in the late 1880s for flat, mechanical typewriters, not for human anatomy. Kinesiology shows the pinky (controlled by the shared flexor digitorum profundus muscle) is our weakest digit. Forcing it to execute high-travel lateral stretches for frequent keys is a leading cause of Repetitive Strain Injury (RSI).
-
+- **The Repetitive Strain Risk:** Without visual guidance, users tend to improvise sloppy key-reaches, twisting their wrists or overextending weak fingers, which rapidly leads to fatigue.
 - **2D Training for a 3D Board:** Flat keyboard diagrams don't translate to the physical keywells and thumb clusters of modern ergonomic hardware.
 
 ---
@@ -43,10 +40,7 @@ Switching to an advanced ergonomic keyboard initially destroys your muscle memor
 
 GridFlux is not a reading test; it is a **visual coordination and biomechanical training tool**. By combining 3D spatial tracking with strict color-coded finger assignments, it forces your brain to map hardware directly to your motor cortex.
 
-- **Alt-Fingering & Biomechanics:** GridFlux teaches you to avoid pinky strain by dynamically using your Ring and Middle fingers for the top rows and outer columns. 
-
-> **🔬 Source & Validation:** This system was developed using layout data and alt-fingering strategies pioneered by ergonomic community experts like *@sunaku*, *@CodingCellist*, and *@nonagoninf*. "Alt-fingering" rejects rigid 19th-century typing rules, instead assigning heavy-reach keys (like F1, F2, =, or -) to the longer, stronger ring and middle fingers. This preserves the home row anchor while drastically reducing pinky overextension.
-
+- **Strict Finger Discipline:** GridFlux assigns a distinct color to every finger. You are forced to execute key presses with the anatomically correct digit, preventing bad habits before they form.
 - **The 3D Grid:** Nodes don't just appear; they descend toward you on a Z-axis, replicating the physical layout and column stagger of your exact keyboard.
 - **The Ghost Tutors:** Live, semi-transparent hand overlays show you the exact resting position and micro-movements required for every single incoming keystroke.
 
@@ -74,7 +68,7 @@ The result:
 ## 🎯 What You Gain
 
 - **Zero Visual Dependency:** You will learn to navigate keywells, thumb clusters, and symbol layers entirely by touch.
-- **Pain-Free Typing:** Subconscious integration of verified "Alt Fingering" strategies, protecting your pinkies from repetitive strain.
+- **Pain-Free Execution:** Enforcing proper finger assignment prevents the repetitive strain caused by sloppy, improvised reaching.
 - **Reactive Muscle Memory:** Faster transitions through rhythm-based continuous input, rather than static paragraph reading.
 
 ---
@@ -123,8 +117,6 @@ No installs. No setup. No friction.
 
 ## 🧬 Bottom Line
 
-Listen to your hands. There is no universal "correct" position, but there is a right way to learn your board.
-
-You don't need to look down. You don't need to strain your pinky. You need rhythm, color coordination, and flow state.
+You don't need to look down. You don't need to guess your reaches. You need rhythm, color coordination, and flow state.
 
 **Stop looking down. Master your layout. Trust your fingers.**
