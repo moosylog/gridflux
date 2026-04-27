@@ -28,7 +28,7 @@
 
 ## 📊 The Ergonomic Transition Trap
 
-Switching to an advanced ergonomic keyboard (like a Glove80 or Corne) initially destroys your muscle memory. Standard typing websites fail to help you transition because they only show you *what* to type, not *how* to physically reach it. 
+Switching to an advanced ergonomic keyboard (like a Glove80) initially destroys your muscle memory. Standard typing websites fail to help you transition because they only show you *what* to type, not *how* to physically reach it. 
 
 - **The Visual Crutch:** You keep looking down at your hands to find the keys, breaking your flow state and capping your speed.
 - **The Repetitive Strain Risk:** Without visual guidance, users tend to improvise sloppy key-reaches, twisting their wrists or overextending weak fingers, which rapidly leads to fatigue.
