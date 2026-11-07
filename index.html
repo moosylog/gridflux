@@ -253,7 +253,8 @@
                     if (settings.hw) document.getElementById('hwSelect').value = settings.hw;
                     if (settings.diff) document.getElementById('diffSelect').value = settings.diff;
                     if (settings.scope) document.getElementById('scopeSelect').value = settings.scope;
-                    if (settings.customLayout !== undefined) document.getElementById('customLayoutStr').value = settings.customLayout;
+                    if (settings.customLayout) document.getElementById('customLayoutStr').value = settings.customLayout;
+                    else document.getElementById('customLayoutStr').value = TEMPLATES[document.getElementById('hwSelect').value] || '';
                     if (settings.solid !== undefined) document.getElementById('solidToggle').checked = settings.solid;
                     if (settings.hands !== undefined) document.getElementById('handsToggle').checked = settings.hands;
                     if (settings.showKb !== undefined) document.getElementById('showKbToggle').checked = settings.showKb;
@@ -295,7 +296,7 @@
         let level = 1, nodesCleared = 0, nodesRequired = 15;
         let power = 0;
         let activeBoss = null;
-        let transitionTimeout;
+        let transitionTimeout, pauseStart = 0;
         let lastSpawnedChar = ''; 
         
         let initialFallSpeed = 9000, initialSpawnRate = 2500;
@@ -344,7 +345,8 @@
             const txt = document.getElementById('customLayoutStr');
             
             // Only overwrite layout if initial load, explicitly resetting, or it currently matches a known default
-            if(init || txt.value === TEMPLATES['go60'] || txt.value === TEMPLATES['ansi60'] || txt.value === TEMPLATES['corne'] || txt.value === TEMPLATES['glove80'] || txt.value === TEMPLATES['voyager'] || txt.value.trim() === '') {
+            const tokenCount = txt.value.split(',').length;
+            if(init || tokenCount !== GEO[hw].length || txt.value === TEMPLATES['go60'] || txt.value === TEMPLATES['ansi60'] || txt.value === TEMPLATES['corne'] || txt.value === TEMPLATES['glove80'] || txt.value === TEMPLATES['voyager'] || txt.value.trim() === '') {
                 txt.value = TEMPLATES[hw];
             }
             
@@ -381,41 +383,93 @@
             toggleSolidMode(); toggleKbMode(); toggleHandsMode();
         }
 
+        // Alias -> canonical short name (from the MoErgo/ZMK keycode catalog). Shifted symbols (EXCL, DLLR...) need Shift, so they are not typeable targets.
+        const KEY_ALIASES = (() => {
+            const m = {
+                RETURN:'RET', ENTER:'RET', RETURN2:'RET', RET2:'RET', ESCAPE:'ESC', BACKSPACE:'BSPC', BKSP:'BSPC', SPACE:'SPC',
+                EQL:'EQUAL', LEFT_BRACKET:'LBKT', RIGHT_BRACKET:'RBKT', BACKSLASH:'BSLH', SEMICOLON:'SEMI', SCLN:'SEMI',
+                SINGLE_QUOTE:'SQT', APOSTROPHE:'SQT', APOS:'SQT', QUOT:'SQT', GRAV:'GRAVE', CMMA:'COMMA', PERIOD:'DOT', SLASH:'FSLH',
+                CAPSLOCK:'CAPS', CLCK:'CAPS', PRINTSCREEN:'PSCRN', PRSC:'PSCRN', SCROLLLOCK:'SLCK', SCLK:'SLCK', PAUS:'PAUSE_BREAK', INSERT:'INS',
+                PAGE_UP:'PG_UP', PGUP:'PG_UP', DELETE:'DEL', PAGE_DOWN:'PG_DN', PGDN:'PG_DN',
+                RIGHT_ARROW:'RIGHT', RARW:'RIGHT', LEFT_ARROW:'LEFT', LARW:'LEFT', DOWN_ARROW:'DOWN', DARW:'DOWN', UP_ARROW:'UP', UARW:'UP',
+                LEFT_CONTROL:'LCTRL', LCTL:'LCTRL', RIGHT_CONTROL:'RCTRL', RCTL:'RCTRL', LEFT_SHIFT:'LSHFT', LSFT:'LSHFT', LSHIFT:'LSHFT',
+                RIGHT_SHIFT:'RSHFT', RSFT:'RSHFT', RSHIFT:'RSHFT', LEFT_ALT:'LALT', RIGHT_ALT:'RALT', LEFT_GUI:'LGUI', RIGHT_GUI:'RGUI',
+                LEFT_WIN:'LGUI', LWIN:'LGUI', RIGHT_WIN:'RGUI', RWIN:'RGUI', LEFT_COMMAND:'LGUI', LCMD:'LGUI', RIGHT_COMMAND:'RGUI', RCMD:'RGUI',
+                K_APP:'MENU', K_APPLICATION:'MENU', K_CONTEXT_MENU:'MENU', K_CMENU:'MENU', GUI:'MENU'
+            };
+            for (let i = 0; i <= 9; i++) { m['NUMBER_'+i] = 'N'+i; m['NUM_'+i] = 'N'+i; }
+            'EXCL EXCLAMATION BANG AT AT_SIGN ATSN HASH POUND DLLR DOLLAR PRCNT PERCENT PRCT CARET CRRT AMPS AMPERSAND STAR ASTERISK ASTRK LPAR LEFT_PARENTHESIS LPRN RPAR RIGHT_PARENTHESIS RPRN UNDER UNDERSCORE PLUS LBRC LEFT_BRACE LCUR RBRC RIGHT_BRACE RCUR PIPE PIPE2 TILDE2 COLON COLN DQT DOUBLE_QUOTES TILDE TILD LT LESS_THAN LABT GT GREATER_THAN RABT QMARK QUESTION'
+                .split(' ').forEach(n => m[n] = 'NONE');
+            return m;
+        })();
+        const canonKey = n => { n = String(n).trim().toUpperCase(); return KEY_ALIASES[n] || n; };
+        const MOD_WRAPPERS = ['LS','LC','LA','LG','RS','RC','RA','RG'];
+        const LAYER_BEHAVIORS = ['MO','TO','TOG','SL','LAYER'];
+        const isNumeric = v => typeof v === 'number' || /^(0x[0-9a-f]+|\d+)$/i.test(String(v).trim());
+
+        // Returns the keycode a binding TYPES (tap action), or NONE if it is not a plain typeable key.
         function extractKeycode(obj) {
-            if (!obj) return 'NONE';
-            let val = obj.value ? String(obj.value).replace('&', '').toUpperCase() : 'NONE';
-            if (['MO', 'TO', 'LAYER', 'TOG', 'SL'].includes(val)) { if (obj.params && obj.params.length > 0) return 'MO' + obj.params[0].value; return 'MO'; }
-            let target = obj;
-            if (obj.params && obj.params.length > 0) { target = obj.params[obj.params.length - 1]; while (target && target.params && target.params.length > 0) target = target.params[target.params.length - 1]; }
-            let extracted = target.value ? String(target.value).replace('&', '').toUpperCase() : val;
-            if (extracted.includes('DANCE')) extracted = extracted.replace('_DANCE', '').replace('DANCE', '');
-            if (extracted.includes(' ') || extracted.includes('(')) {
-                let parts = extracted.replace(/[(),]/g, ' ').trim().split(/\s+/);
-                for (let i = parts.length - 1; i >= 0; i--) { let p = parts[i]; if (p.length === 1 || symbolMap[p] || keyMap[p.toLowerCase()] || ignKeys.includes(p)) return p; }
-                extracted = parts[parts.length - 1];
+            if (!obj || typeof obj !== 'object') return 'NONE';
+            const raw = (obj.value === undefined || obj.value === null) ? '' : String(obj.value).trim();
+            const name = raw.replace(/^&/, '').toUpperCase();
+            const params = Array.isArray(obj.params) ? obj.params : [];
+            if (!name) return 'NONE';
+            if (LAYER_BEHAVIORS.includes(name)) { const p = params[0]; return p && p.value !== undefined ? 'MO' + p.value : 'MO'; }
+            if (name === 'LOWER') return 'LOWER';
+            if (name === 'MAGIC') return 'MAGIC';
+            if (['TRANS','NONE'].includes(name)) return 'NONE';
+            if (name === 'CUSTOM') {
+                const txt = params.length && params[0] && params[0].value !== undefined ? String(params[0].value).trim() : '';
+                const m = txt.match(/^&kp\s+([A-Za-z0-9_]+)$/i);
+                return m ? canonKey(m[1]) : 'NONE';
             }
-            return extracted === 'CUSTOM' ? 'NONE' : extracted;
+            if (!params.length) return name.replace(/_?DANCE$/, '');   // macros, tap-dances, &lower-style names: shown as a label, never typed
+
+            // Walk to the TAP cell: the last parameter, descending into nested params.
+            let target = params[params.length - 1];
+            while (target && typeof target === 'object') {
+                const kids = Array.isArray(target.params) ? target.params : [];
+                if (kids.length && MOD_WRAPPERS.includes(String(target.value).toUpperCase())) return 'NONE'; // LS(N4), LC(C)... need modifiers
+                if (!kids.length) break;
+                target = kids[kids.length - 1];
+            }
+            const v = (target && typeof target === 'object') ? target.value : target;
+            if (v === undefined || v === null || v === '' || isNumeric(v)) return 'NONE';  // layer numbers, BT profiles, MOVE_Y 33, ...
+            return canonKey(v);
         }
 
         function handleJsonUpload(e) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = (ev) => {
                 try {
-                    const data = JSON.parse(e.target.result);
-                    if(data.keyboard) { const kb = data.keyboard.toLowerCase(); if(kb.includes('glove80')) document.getElementById('hwSelect').value = 'glove80'; else if(kb.includes('go60')) document.getElementById('hwSelect').value = 'go60'; else if(kb.includes('corne')) document.getElementById('hwSelect').value = 'corne'; else if(kb.includes('voyager')) document.getElementById('hwSelect').value = 'voyager'; }
-                    const hw = document.getElementById('hwSelect').value, limit = GEO[hw].length;
-                    let arr = (data.layers?.[0] || []).slice(0, limit).map(k => extractKeycode(k));
-                    while(arr.length < limit) arr.push('NONE');
+                    let data = JSON.parse(ev.target.result);
+                    if (data && data.keymap && !data.layers) data = data.keymap;           // {"keymap": {...}} wrapper
+                    if (!data || !Array.isArray(data.layers) || !data.layers.length) throw new Error("No \"layers\" array found.");
+                    const base = data.layers[0];
+                    if (!Array.isArray(base)) throw new Error("Layer 0 is not an array of bindings.");
+
+                    const sel = document.getElementById('hwSelect');
+                    let hwGuess = null;
+                    if (typeof data.keyboard === 'string') {
+                        const kb = data.keyboard.toLowerCase();
+                        ['glove80','go60','corne','voyager'].forEach(h => { if (!hwGuess && kb.includes(h)) hwGuess = h; });
+                    }
+                    if (!hwGuess) hwGuess = base.length === 80 ? 'glove80' : (base.length === 60 || base.length === 62) ? 'go60' : null;  // MoErgo layers are exactly 80 / 60 long
+                    if (hwGuess) sel.value = hwGuess;
+
+                    const hw = sel.value, limit = GEO[hw].length;
+                    let arr = base.slice(0, limit).map(k => extractKeycode(k));
+                    while (arr.length < limit) arr.push('NONE');
                     if (hw === 'go60') { if (arr[60] === 'NONE') arr[60] = 'SCROLL'; if (arr[61] === 'NONE') arr[61] = 'MOVE'; }
                     document.getElementById('customLayoutStr').value = arr.join(', '); buildKeyboard();
-                    
+
                     SettingsManager.save(); // Save after successful upload
 
                     const lbl = document.getElementById('lblUpload');
                     lbl.innerText = "✅ " + hw.toUpperCase() + " LOADED!"; lbl.style.color = "var(--c-index)"; lbl.style.borderColor = "var(--c-index)";
                     setTimeout(() => { lbl.innerText = "📁 LOAD LAYOUT EDITOR JSON"; lbl.style.color = ""; lbl.style.borderColor = ""; }, 3000);
-                } catch(err) { alert("Invalid JSON format."); }
+                } catch(err) { alert("Could not load layout: " + (err && err.message ? err.message : "invalid JSON.")); }
             }; reader.readAsText(file); e.target.value = '';
         }
 
@@ -451,8 +505,7 @@
 
             geo.forEach((k, i) => {
                 let dl = layout[i] || 'NONE';
-                const jsonAliases = {'SPACE':'SPC', 'ENTER':'RET', 'ESCAPE':'ESC', 'BACKSPACE':'BSPC', 'DELETE':'DEL', 'LSHIFT':'LSHFT', 'RSHIFT':'RSHFT'};
-                if (jsonAliases[dl]) dl = jsonAliases[dl];
+                dl = canonKey(dl);   // handles pasted/saved layouts that still use long ZMK names
 
                 let dc = symbolMap[dl] || dl; let wrap = document.createElement('div'), fc = getFingerClass(k, hw);
                 wrap.className = `key-wrap ${fc}`; wrap.style.left = `${k.x*U}px`; wrap.style.top = `${k.y*U}px`; wrap.style.width = `${(k.w||1)*U-8}px`; wrap.style.height = `${(k.h||1)*U-8}px`;
@@ -470,7 +523,7 @@
                 }
                 
                 if(!inTxt) { wrap.classList.add('out-of-scope'); cap.classList.add('is-blank'); } else { cap.innerText = dc; if(dc.length===1 && !k.isRound) cap.classList.add('single-char'); }
-                if(inDrop) { let lk = dl.toLowerCase(); domKeys[lk] = { el: wrap, top: k.y*U, left: k.x*U, fc: fc, isL: k.x < (max_x/2), dc: dc }; currentLevelAlphabet.push(lk); }
+                if(inDrop) { let lk = dl.toLowerCase(); domKeys[lk] = { el: wrap, top: k.y*U, left: k.x*U, fc: fc, isL: ((k.r !== undefined && k.rx !== undefined) ? k.rx : k.x) < (max_x/2), dc: dc }; currentLevelAlphabet.push(lk); }
                 wrap.appendChild(cap); stage.appendChild(wrap);
             });
 
@@ -502,7 +555,7 @@
 
             buildKeyboard();
             if(!currentLevelAlphabet.length) return alert("No valid keys to practice in this scope!");
-            if(!audioCtx) { audioCtx = new AudioContext(); audioCtx.resume(); }
+            if(!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { audioCtx = null; } } if(audioCtx && audioCtx.resume) audioCtx.resume();
             document.getElementById('menuOverlay').style.display = 'none'; toggleHandsMode(); toggleSolidMode(); toggleKbMode();
             
             let isNewGame = (!gameActive || reboot);
@@ -527,7 +580,7 @@
             
             gameActive = true; isPaused = false; isTransitioning = false; lastTime = performance.now(); lastKeyPressTime = performance.now();
             cancelAnimationFrame(animationFrameId); animationFrameId = requestAnimationFrame(gameTick);
-            clearTimeout(spawnId); clearTimeout(glitchId); 
+            clearTimeout(spawnId); clearTimeout(glitchId); clearTimeout(transitionTimeout); 
             
             if(level === 1 && isNewGame) {
                 isTransitioning = true;
@@ -591,6 +644,7 @@
 
         function openMenu() { 
             if(gameActive) {
+                if(!isPaused) pauseStart = performance.now();
                 isPaused = true; clearTimeout(spawnId); clearTimeout(glitchId); 
                 document.getElementById('menuTitle').innerText = "GAME PAUSED"; 
                 document.getElementById('btnStart').style.display = 'none'; 
@@ -620,7 +674,8 @@
             document.getElementById('menuOverlay').style.display = 'flex'; 
         }
 
-        function resumeGame() { document.getElementById('menuOverlay').style.display = 'none'; buildKeyboard(); toggleSolidMode(); toggleKbMode(); toggleHandsMode();
+        function resumeGame() { document.getElementById('menuOverlay').style.display = 'none';
+            if(pauseStart) { const gap = performance.now() - pauseStart; activeNodes.forEach(n => n.st += gap); pauseStart = 0; }  // nodes must not advance while paused buildKeyboard(); toggleSolidMode(); toggleKbMode(); toggleHandsMode();
             for(let i=activeNodes.length-1; i>=0; i--) { let n=activeNodes[i];
                 if(n.isWord) {
                     n.el.className = `data-node word-block`;
@@ -794,7 +849,7 @@
                     return;
                 }
                 if(ev==='rain') { return triggerRain(); }
-                if(ev==='surge') { document.body.classList.add('glitch-surge'); activeNodes.forEach(n=> {if(!n.isWord) n.sMs*=0.5;}); return setTimeout(()=>document.body.classList.remove('glitch-surge'),3500); }
+                if(ev==='surge') { document.body.classList.add('glitch-surge'); const nowS = performance.now(); activeNodes.forEach(n=> {if(!n.isWord && !n.z) { const prog = (nowS-n.st)/n.sMs; n.sMs*=0.5; n.st = nowS - prog*n.sMs; }}); return setTimeout(()=>document.body.classList.remove('glitch-surge'),3500); }
                 if(ev==='scrambled-letters') { messedFingerActive = true; return setTimeout(()=> messedFingerActive = false, 5500); }
                 
                 const isBodyGlitch = ['emp', 'monochrome', 'invert', 'wind', 'fisheye', 'pulse', 'cipher'].includes(ev);
@@ -813,7 +868,8 @@
             let c = '', isWord = false, isArmored = false, isGhost = false;
             let df = document.getElementById('diffSelect').value;
             
-            if (!forceGolden && !forceDecoy && !activeBoss && level >= 4 && Math.random() < 0.05) { isWord = true; }
+            const typeableWords = WORDS.filter(w => [...w].every(ch => domKeys[ch.toLowerCase()]));
+            if (!forceGolden && !forceDecoy && !activeBoss && level >= 4 && typeableWords.length && Math.random() < 0.05) { isWord = true; }
             
             if (!isWord && !forceGolden && !forceDecoy && df !== 'beginner') {
                 if (level >= 3 && Math.random() < 0.1) isGhost = true;
@@ -821,11 +877,13 @@
             }
 
             if (forceDecoy) {
-                const allKeys = Object.keys(domKeys).filter(k => /^[a-z]$/i.test(k));
-                const unusedKeys = allKeys.filter(k => !currentLevelAlphabet.includes(k));
-                c = unusedKeys.length ? unusedKeys[Math.floor(Math.random() * unusedKeys.length)] : currentLevelAlphabet[0];
+                // Decoys must sit on a key that exists in the grid; prefer one with no real target in flight so typing it is unambiguous.
+                const busy = new Set(activeNodes.filter(n => !n.isDecoy).map(n => n.char));
+                const free = currentLevelAlphabet.filter(k => !busy.has(k));
+                const pool = free.length ? free : currentLevelAlphabet;
+                c = pool[Math.floor(Math.random() * pool.length)];
             } else if (isWord) {
-                c = WORDS[Math.floor(Math.random() * WORDS.length)];
+                c = typeableWords[Math.floor(Math.random() * typeableWords.length)];
             } else {
                 let availableChars = currentLevelAlphabet.filter(char => char !== lastSpawnedChar);
                 if (availableChars.length === 0) availableChars = currentLevelAlphabet; 
@@ -923,7 +981,7 @@
                             let b=document.createElement('div'); b.className=`explosion ${domKeys[n.char].fc}`; domKeys[n.char].el.appendChild(b); setTimeout(()=>b.remove(),300);
                             let t=document.createElement('div'); t.className=`tether ${n.fc}`; t.style.height=`${n.tt-n.sTop}px`; t.style.left=`${n.dropX+29}px`; t.style.top=`${n.sTop+31}px`; stage.appendChild(t); setTimeout(()=>t.remove(),200);
                         }
-                        score += Math.round((n.j?300:100)*skillIndex); combo++;
+                        if(!n.isDecoy) { score += Math.round((n.j?300:100)*skillIndex); combo++; }
                         
    //                 } else if(!n.g) {  moosy fix for smooth ocean
 					} else if(!n.g && !n.isDecoy) {
@@ -936,10 +994,10 @@
                             if (health <= 3) panicBrake = 1.3; 
                         }
                         
-                        combo=consecutiveErrors=0; stage.classList.remove('glitch-shake'); void stage.offsetWidth; stage.classList.add('glitch-shake'); setTimeout(()=>stage.classList.remove('glitch-shake'),300);
-                        if(++consecutiveErrors>=2 && df !== 'beginner') { skillIndex = Math.max(1.0, skillIndex - 0.1); }
+                        combo = 0; consecutiveErrors++; stage.classList.remove('glitch-shake'); void stage.offsetWidth; stage.classList.add('glitch-shake'); setTimeout(()=>stage.classList.remove('glitch-shake'),300);
+                        if(consecutiveErrors>=2 && df !== 'beginner') { skillIndex = Math.max(1.0, skillIndex - 0.1); }
                         if(n.isWord) activeBoss = null;
-                        if(health<=0) return stopGame();
+                        if(health<=0) { updateHUD(); return stopGame(); }
                     }
                     updateHUD(); n.active=false; n.el.remove(); activeNodes.splice(i,1);
                 } else n.el.style.transform=`translate3d(0,${cy}px,0)`;
@@ -1078,7 +1136,9 @@
                     showFloat("SKILL ISSUE DETECTED 🚨", t.el.offsetLeft, mt, 'float-warning');
                     t.el.style.background = 'red';
                     stage.classList.remove('glitch-shake'); void stage.offsetWidth; stage.classList.add('glitch-shake'); setTimeout(()=>stage.classList.remove('glitch-shake'),300);
-                    t.z=true; t.el.classList.add('zooming'); t.sTop=mt; t.st=performance.now(); t.sMs=40; updateHUD(); return;
+                    t.z=true; t.el.classList.add('zooming'); t.sTop=mt; t.st=performance.now(); t.sMs=40; updateHUD();
+                    if(health<=0) return stopGame();
+                    return;
                 }
 
                 validKeysTyped++;
@@ -1090,7 +1150,7 @@
                 killNode(t, mt);
             } else if (!hitBoss && k === 'spc' && power >= 100) {
                 activateSuperpower();
-            } else if (domKeys[k] || /^[a-z0-9]$/i.test(ki) || keyMap[ki]) {
+            } else if (!(['lshft','rshft','lctrl','lalt','lgui','rgui'].includes(k) && !domKeys[k]) && (domKeys[k] || /^[a-z0-9]$/i.test(ki) || keyMap[ki])) {
                 if (df !== 'beginner') skillIndex = Math.max(1.0, skillIndex - 0.05); 
                 playMiss(); score=Math.max(0,score-20); combo=0; consecutiveErrors++; missMap[k] = (missMap[k] || 0) + 1;
                 stage.classList.remove('glitch-shake'); void stage.offsetWidth; stage.classList.add('glitch-shake'); setTimeout(()=>stage.classList.remove('glitch-shake'),300);
@@ -1126,7 +1186,7 @@
 
             if(rk==='escape'){ if(gameActive&&!isPaused) openMenu(); else if(gameActive&&isPaused) resumeGame(); return; } 
             if(testMode && gameActive && !isPaused && ['arrowleft', 'arrowright'].includes(rk)) { e.preventDefault(); return applyTestEffect(rk === 'arrowright' ? 1 : -1); }
-            if(gameActive&&!isPaused&&[' ','arrowup','arrowdown','arrowleft','arrowright'].includes(rk)) e.preventDefault(); 
+            if(gameActive&&!isPaused&&[' ','tab','arrowup','arrowdown','arrowleft','arrowright'].includes(rk)) e.preventDefault(); 
             processInput(rk); 
         });
     </script>
